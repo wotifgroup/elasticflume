@@ -26,6 +26,7 @@
             <artifactId>flume</artifactId>
             <version>0.9.1-dev</version>
             <classifier>core</classifier>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
