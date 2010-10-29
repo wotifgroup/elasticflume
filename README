@@ -9,7 +9,14 @@ Pre-Conditions:
     From here on, this Flume directory will be referred to as FLUME_HOME
 
 * Have ElasticSearch installed locally, we'll assume that from a Getting Started point of view you have a local
-  ElasticSearch server running locally, if not go here http://github.com/elasticsearch/elasticsearch
+  ElasticSearch server running locally, if not go here http://github.com/elasticsearch/elasticsearch (for the latest)
+  or here http://www.elasticsearch.com/download/ for the binaries.
+
+  The best way to do this is just download the binary, unpack it and then:
+
+    bin/elasticsearch -f
+
+  See the installation guide for ElasticSearch here: http://www.elasticsearch.com/docs/elasticsearch/setup/installation/
 
 
 Getting Started with elasticflume
@@ -83,6 +90,10 @@ Getting Started with elasticflume
 
 
     bin/flume node_nowatch
+
+    *NOTE*: If you get other errors like "org.elasticsearch.discovery.MasterNotDiscoveredException", please ensure you have a running ElasticSearch instance locally
+    or somewhere on your local network, and have Multicast enabled on the relevant network interfaces.  elasticflume will try to connect to the default
+    named ElasticSearch cluster it can detect via multicast auto-discovery (see Pre-conditions section above).   
 
 
 5. Setup a basic console based source so you can type in data manually and have it indexed (pretending to be a log message)
