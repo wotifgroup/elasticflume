@@ -30,9 +30,22 @@ Getting Started with elasticflume
         mvn install:install-file -DgroupId=com.cloudera -DartifactId=flume -Dversion=0.9.1-dev -Dclassifier=core -Dfile=$FLUME_HOME/build/flume-0.9.1-dev-core.jar -Dpackaging=jar
 
 
-    1.2 Build elasticflume
+    1.2 If you do NOT have a Maven Repository, skip to the next step.  If you're not sure if you do or not, you probably don't, so skip this.
+
+       If you DO have a Maven Repository Manager (Nexus, Artifactory etc) configured to proxy things, you will need to ensure
+       that it is configured to proxy the Sonatype OSS repository:
+
+            http://oss.sonatype.org/content/groups/public
+
+        Don't forget to mark this to proxy both Releases AND Snapshots (in Nexus, you should configure 2 separate Proxies to host the releases and snapshots respectively)
+
+
+
+    1.3 Build elasticflume
     cd $ELASTICFLUME_HOME
     mvn package
+
+    If Maven complains that it cannot locate an artifact, check 1.2 above to make sure you got it correct.  Contact me if you have problems.
 
 2. Now add the elasticflume jar into the classpath too, I do this personally with a symlink for testing, but copying is probably a better idea.. :):
 

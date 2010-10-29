@@ -14,6 +14,21 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+
+    <repositories>
+        <repository>
+            <id>Sonatype.OSS</id>
+            <name>Sonatype OSS</name>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <url>http://oss.sonatype.org/content/groups/public</url>
+        </repository>
+    </repositories>
+
     <dependencies>
 
         <dependency>
