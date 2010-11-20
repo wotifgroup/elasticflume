@@ -34,7 +34,7 @@ Getting Started with elasticflume
     1.1 Install the Flume library into your local Maven repo (because it's not available in central)
         Note: the below assumes you have done a 'git clone' of the Flume source, and have built it.
 
-        mvn install:install-file -DgroupId=com.cloudera -DartifactId=flume -Dversion=0.9.1-dev -Dclassifier=core -Dfile=$FLUME_HOME/build/flume-0.9.1-dev-core.jar -Dpackaging=jar
+        mvn install:install-file -DgroupId=com.cloudera -DartifactId=flume -Dversion=0.9.3-SNAPSHOT -Dclassifier=core -Dfile=$FLUME_HOME/build/flume-0.9.3-SNAPSHOT-core.jar -Dpackaging=jar
 
 
     1.2 If you do NOT have a Maven Repository, skip to the next step.  If you're not sure if you do or not, you probably don't, so skip this.
@@ -81,22 +81,25 @@ Getting Started with elasticflume
 
 
 4. Startup Flume Master, and Flume nodes, you will need 2 different shells here.
-    cd $FLUME_HOME
-    bin/flume master
+
+    Shell #1:
+        cd $FLUME_HOME
+        bin/flume master
+
+    Shell #2:
+        cd $FLUME_HOME
+        bin/flume node_nowatch
 
         VERIFY that you see in the startup log for the master the following log line, if you don't see this, you've missed at least Step 3:
 
-        2010-09-14 14:20:53,861 [main] INFO conf.SinkFactoryImpl: Found sink builder elasticSearchSink in org.elasticsearch.flume.ElasticSearchSink
-
-
-    bin/flume node_nowatch
+        2010-11-20 13:15:03,556 [main] INFO conf.SinkFactoryImpl: Found sink builder elasticSearchSink in org.elasticsearch.flume.ElasticSearchSink
 
     *NOTE*: If you get other errors like "org.elasticsearch.discovery.MasterNotDiscoveredException", please ensure you have a running ElasticSearch instance locally
     or somewhere on your local network, and have Multicast enabled on the relevant network interfaces.  elasticflume will try to connect to the default
     named ElasticSearch cluster it can detect via multicast auto-discovery (see Pre-conditions section above).   
 
 
-5. Setup a basic console based source so you can type in data manually and have it indexed (pretending to be a log message)
+5. From yet another shell, setup a basic console based source so you can type in data manually and have it indexed (pretending to be a log message)
     cd $FLUME_HOME
     bin/flume shell -c localhost -e "exec config localhost 'console' 'elasticSearchSink'"
 
@@ -108,7 +111,7 @@ Getting Started with elasticflume
        If you see a node listed using an IP address, then you may need to then map that to localhost inside flume with
        a logical name by doing this:
 
-       bin/flume shell -c localhost -e "map <IP ADDRESS> localhost"
+       bin/flume shell -c localhost -e "exec map <IP ADDRESS> localhost"
 
 
 6. NOW FOR THE TEST! :)  In the console window you started the "node_nowatch" above,
