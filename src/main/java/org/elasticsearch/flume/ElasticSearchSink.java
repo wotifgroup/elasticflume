@@ -15,6 +15,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentParser;
+
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
@@ -27,19 +32,34 @@ public class ElasticSearchSink extends EventSink.Base {
 
     @Override
     public void append(Event e) throws IOException {
-
-        IndexResponse response = client.prepareIndex(indexName, LOG_TYPE, null)
-                .setSource(jsonBuilder()
+        XContentParser parser = null;
+        try {
+            byte[] data = e.getBody();
+            XContentType contentType = XContentFactory.xContentType(data);
+            XContentBuilder builder = jsonBuilder()
                         .startObject()
-                        .field("message", new String(e.getBody(), charset))
                         .field("timestamp", new Date(e.getTimestamp()))
                         .field("host", e.getHost())
-                        .field("priority", e.getPriority().name())
-                        // TODO add attributes
-                        .endObject()
-                )
+                        .field("priority", e.getPriority().name());
+
+            if (contentType == null) {
+                builder.startObject("message").field("text", new String(data, charset)).endObject();
+            } else {
+                parser = XContentFactory.xContent(XContentFactory.xContentType(data)).createParser(data);
+                parser.nextToken();
+                builder.field("message").copyCurrentStructure(parser);
+            }
+
+            // TODO add attributes
+            builder.endObject();
+
+            IndexResponse response = client.prepareIndex(indexName, LOG_TYPE, null)
+                .setSource(builder)
                 .execute()
                 .actionGet();
+        } finally {
+            if (parser != null) parser.close();
+        }
     }
 
 
