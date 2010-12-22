@@ -58,6 +58,10 @@ Getting Started with elasticflume
 
     ln -s $ELASTICFLUME_HOME/target/elasticflume-1.0.0-SNAPSHOT-jar-with-dependencies.jar $FLUME_HOME/lib/
 
+    **NOTE**: On Ubuntu, with certain JVM's installed, there have been reports that using the Symlink approach does not work
+              because the JVM will refuse to load a jar coming from a symlink, so if you get a ClassNotFoundException, perhaps try
+              copying instead.
+
 3. Ensure your Flume config is correct, check the $FLUME_HOME/conf/flume-conf.xml correctly identifies your local master, you
     may have to copy the template file that's in that directory to be 'flume-conf.xml' and then add the following:
 
