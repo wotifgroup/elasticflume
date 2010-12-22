@@ -127,7 +127,7 @@ Getting Started with elasticflume
     curl -XGET 'http://localhost:9200/flume/_search?pretty=true' -d '
     {
         "query" : {
-            "term" : { "message" : "hello" }
+            "term" : { "text" : "hello" }
         }
     }
     '
