@@ -8,6 +8,7 @@ import com.cloudera.util.Pair;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
 import org.slf4j.Logger;
@@ -30,24 +31,20 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 public class ElasticSearchSink extends EventSink.Base {
 
     private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchSink.class);
+    private static final String DEFAULT_INDEX_NAME = "flume";
+    private static final String LOG_TYPE = "log";
+    private static final int DEFAULT_ELASTICSEARCH_PORT = 9300;
 
     private Node node;
     private Client client;
-    private String indexName = "flume";
-    private static final String LOG_TYPE = "LOG";
+    private String indexName = DEFAULT_INDEX_NAME;
+
     private Charset charset = Charset.defaultCharset();
-    private final String[] esHostNames;
-    private static final int DEFAULT_ELASTICSEARCH_PORT = 9300;
 
 
-    public ElasticSearchSink(String esHostNames) {
-        LOG.info("ES hostnames: " + esHostNames);
-        if (esHostNames == null || esHostNames.trim().length()==0) {
-            this.esHostNames = new String[0];
-        } else {
-            this.esHostNames = esHostNames.split(",");
-        }
-    }
+    private String[] hostNames = new String[0];
+    private String clusterName = ClusterName.DEFAULT.value();
+
 
     @Override
     public void append(Event e) throws IOException {
@@ -57,10 +54,10 @@ public class ElasticSearchSink extends EventSink.Base {
             byte[] data = e.getBody();
             XContentType contentType = XContentFactory.xContentType(data);
             XContentBuilder builder = jsonBuilder()
-                        .startObject()
-                        .field("timestamp", new Date(e.getTimestamp()))
-                        .field("host", e.getHost())
-                        .field("priority", e.getPriority().name());
+                    .startObject()
+                    .field("timestamp", new Date(e.getTimestamp()))
+                    .field("host", e.getHost())
+                    .field("priority", e.getPriority().name());
 
             if (contentType == null) {
                 builder.startObject("message").field("text", new String(data, charset)).endObject();
@@ -74,9 +71,9 @@ public class ElasticSearchSink extends EventSink.Base {
             builder.endObject();
 
             IndexResponse response = client.prepareIndex(indexName, LOG_TYPE, null)
-                .setSource(builder)
-                .execute()
-                .actionGet();
+                    .setSource(builder)
+                    .execute()
+                    .actionGet();
         } finally {
             if (parser != null) parser.close();
         }
@@ -99,14 +96,14 @@ public class ElasticSearchSink extends EventSink.Base {
     public void open() throws IOException {
         super.open();
 
-        if (esHostNames.length == 0) {
+        if (hostNames.length == 0) {
             LOG.info("Using ES AutoDiscovery mode");
             node = nodeBuilder().client(true).node();
             client = node.client();
         } else {
-            LOG.info("Using provided ES hostnames: " + esHostNames.length);
+            LOG.info("Using provided ES hostnames: " + hostNames.length);
             TransportClient transportClient = new TransportClient();
-            for (String esHostName : esHostNames) {
+            for (String esHostName : hostNames) {
                 LOG.info("Adding TransportClient: " + esHostName);
                 transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress(esHostName, DEFAULT_ELASTICSEARCH_PORT));
             }
@@ -116,28 +113,6 @@ public class ElasticSearchSink extends EventSink.Base {
     }
 
 
-    public static SinkBuilder builder() {
-
-        return new SinkBuilder() {
-            @Override
-            public EventSink build(Context context, String... argv) {
-                if (argv.length == 0
-                        || argv.length == 1) {
-                    String esHostNames = "";
-                    if (argv.length == 1) {
-                        esHostNames = argv[0];
-                    }
-                    return new ElasticSearchSink(esHostNames);
-                } else {
-                    throw new IllegalArgumentException(
-                            "usage: elasticSearchSink[([esHostNames])]");
-                }
-
-
-            }
-        };
-    }
-
     /**
      * This is a special function used by the SourceFactory to pull in this class
      * as a plugin sink.
@@ -145,8 +120,34 @@ public class ElasticSearchSink extends EventSink.Base {
     public static List<Pair<String, SinkBuilder>> getSinkBuilders() {
         List<Pair<String, SinkBuilder>> builders =
                 new ArrayList<Pair<String, SinkBuilder>>();
-        builders.add(new Pair<String, SinkBuilder>("elasticSearchSink", builder()));
+
+        builders.add(new Pair<String, SinkBuilder>("elasticSearchSink", new ElasticSearchSinkBuilder()));
         return builders;
+    }
+
+
+    public String getClusterName() {
+        return clusterName;
+    }
+
+    public void setClusterName(String clusterName) {
+        this.clusterName = clusterName;
+    }
+
+    public String getIndexName() {
+        return indexName;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
+    }
+
+    public void setHostNames(String[] hostNames) {
+        this.hostNames = hostNames;
+    }
+
+    public String[] getHostNames() {
+        return hostNames;
     }
 
 }
