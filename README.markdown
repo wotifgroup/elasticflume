@@ -27,12 +27,12 @@ Getting Started with elasticflume
 
     export ELASTICFLUME_HOME=path to where you have elasticflume checked out>
 
-            (Be careful with these last 2 env vars because they are deceivingly similar)
+    *(Be careful with these last 2 env vars because they are deceivingly similar)*
 
 1. Build it using Maven:
 
     1.1 Install the Flume library into your local Maven repo (because it's not available in central)
-        Note: the below assumes you have done a 'git clone' of the Flume source, and have built it.
+    Note: the below assumes you have done a 'git clone' of the Flume source, and have built it.
 
         mvn install:install-file -DgroupId=com.cloudera -DartifactId=flume -Dversion=0.9.3-SNAPSHOT -Dclassifier=core -Dfile=$FLUME_HOME/build/flume-0.9.3-SNAPSHOT-core.jar -Dpackaging=jar
 
@@ -58,9 +58,7 @@ Getting Started with elasticflume
 
     ln -s $ELASTICFLUME_HOME/target/elasticflume-1.0.0-SNAPSHOT-jar-with-dependencies.jar $FLUME_HOME/lib/
 
-    **NOTE**: On Ubuntu, with certain JVM's installed, there have been reports that using the Symlink approach does not work
-              because the JVM will refuse to load a jar coming from a symlink, so if you get a ClassNotFoundException, perhaps try
-              copying instead.
+    **NOTE**: On Ubuntu, with certain JVM's installed, there have been reports that using the Symlink approach does not work because the JVM will refuse to load a jar coming from a symlink, so if you get a ClassNotFoundException, perhaps try copying instead.
 
 3. Ensure your Flume config is correct, check the $FLUME_HOME/conf/flume-conf.xml correctly identifies your local master, you
     may have to copy the template file that's in that directory to be 'flume-conf.xml' and then add the following:
@@ -98,7 +96,7 @@ Getting Started with elasticflume
 
         2010-11-20 13:15:03,556 [main] INFO conf.SinkFactoryImpl: Found sink builder elasticSearchSink in org.elasticsearch.flume.ElasticSearchSink
 
-    *NOTE*: If you get other errors like "org.elasticsearch.discovery.MasterNotDiscoveredException", please ensure you have a running ElasticSearch instance locally
+    **NOTE**: If you get other errors like "org.elasticsearch.discovery.MasterNotDiscoveredException", please ensure you have a running ElasticSearch instance locally
     or somewhere on your local network, and have Multicast enabled on the relevant network interfaces.  elasticflume will try to connect to the default
     named ElasticSearch cluster it can detect via multicast auto-discovery (see Pre-conditions section above).   
 
@@ -128,6 +126,7 @@ Getting Started with elasticflume
 
 7. Verify you can search for your "Hello World" log, in another console, use curl to search your local elasticsearch node:
 
+
     curl -XGET 'http://localhost:9200/flume/_search?pretty=true' -d '
     {
         "query" : {
@@ -139,13 +138,13 @@ Getting Started with elasticflume
     You should get a pretty printed JSON formatted search results, something like:
 
 
-  {
-  "_shards" : {
+    {
+    "_shards" : {
     "total" : 5,
     "successful" : 5,
     "failed" : 0
-  },
-  "hits" : {
+    },
+    "hits" : {
     "total" : 2,
     "max_score" : 1.1976817,
     "hits" : [ {
@@ -159,15 +158,11 @@ Getting Started with elasticflume
       "_id" : "c77c18cc-af40-4362-b20b-193e5a3f6ff5",
       "_score" : 0.8465736, "_source" : {"message":"hello there good sir","timestamp":"2010-09-14T03:28:04.168Z","host":"192.168.1.170","priority":"INFO"}
     } ]
-  }
-  }
+    }
+    }
 
 
 
-8. So now you have some basic setup to stream logs via Flume into ElasticSearch.  To search the logs, you can use [Mobz elasticsearch-head project](https://github.com/mobz/elasticsearch-head)
-
-
-
-   this will allow you to do searching across the index you create via elasticflume (or any other method).
+8. So now you have some basic setup to stream logs via Flume into ElasticSearch.  To search the logs, you can use [Mobz elasticsearch-head project](https://github.com/mobz/elasticsearch-head) this will allow you to do searching across the index you create via elasticflume (or any other method).
 
 9. A more complete discussion of how to setup a log4j-based system to stream via flume to elasticsearch can be found in the same directory as this README (log4j-to-elasticsearch).
