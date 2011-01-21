@@ -1,0 +1,73 @@
+Setting up a log4j-based application to stream logs to ElasticSearch via elasticflume
+
+This is a cookbook approach to taking an existing log4j based application, that is presumably already logging stuff to
+a file or other places and allow it to be streamed via Flume into ElasticSearch.
+
+Caveats
+
+This cookbook configuration does still have a window of opportunity to lose logs, because it goes from
+  yourapp->log4j->syslog->flume agent,
+it is possible, although unlikely that after the log4j appender has transfered to syslog, there may be data loss.  Bear
+this in mind.  Until a direct log4j->flume agent mechanism is available (see [1] below) this needs considering.
+
+Yes, but can't I just use the tailSource of the file I'm already logging too?
+Sure, that'll work, but it loses some flexibility on the richness of the meta data you can expose via log4j.  Most noticeably
+you'll find that Exceptions stack elements will be considered individual logging events within Flume.  What you really
+want (IMHO) is for each logging event, with all it's richness to make it's way to elasticsearch for great searchability.
+
+Prerequisites
+
+# I will presume that you have already tried the basic setup found the README at the top of this project.
+# You have a running Flume Master (at least one), and a running Flume Node *on the host* of your log4j-based application
+
+Assumptions
+* FLUME_HOME - points to the root of the flume directory
+* FLUME_MASTER - is the physical hostname of the Flume master you want to run.  If you're running the master and a node
+  locally, then it can be localhost (but that's not usually a good idea in production..)
+* NODE_NAME - this is the physical host name of the node you are trying to configure.  In my examples below it is sensitive
+   to the node the step is referring to.
+* COLLECTOR_HOST - this is the physical host name of a Flume node you wish to act in the Collector tier of Flume.
+* ELASTICSEARCH_HOST - this is the physical hostname of the server running ElasticSearch (or an Apache load balancer
+  that is fronting ES)
+
+log4j.xml
+My example assumes you use the XML configuration format, but a smart person such as yourself should be able to translate
+this to the Properties-based approach if you need that.
+
+	<appender name="SyslogAppender" class="org.apache.log4j.net.SyslogAppender">
+	    <param name="SyslogHost" value="localhost:5141"/>
+	    <param name="Facility" value="USER"/>
+	    <param name="FacilityPrinting" value="false"/>
+	    <param name="Header" value="true" />
+	    <layout class="org.apache.log4j.PatternLayout">
+	            <param name="ConversionPattern"
+	               value="[%d{ISO8601} %-5p][%20.20c][%t %X{RequestID}][%X{IPAddress}][%X{UserID}] %m%n"/>
+	    </layout>
+	</appender>
+
+
+Flume
+You first need to setup a logical name within Flume to mean what the Collector host is.  Because in Flume the logical
+node dictates what source/sink can be bound to it we give the actual host name that is going to be the collector a nice
+logical name 'collector'. We'll use that later.
+
+  FLUME_HOME/bin/flume shell -c FLUMEMASTER -e 'exec map COLLECTOR_HOST collector'
+  FLUME_HOME/bin/flume shell -c FLUMEMASTER -e 'exec config collector 'collectorSource(35853)' 'elasticSearchSink("elasticsearch", "flume", "ELASTICSEARCH_HOST")'
+
+Now that your app is configured to broadcast Syslog style to port 5141 on the localhost, it's time to start getting
+something to listen on it.   *NOTE*: we're not actually streaming _TO_ syslog, but via the Syslog protocol. What
+we'll be doing is getting flume now to startup a Syslog-style listener to match the protocal.
+
+Ensure that a flume local node is running on the same server as the webapp.  Using the Flume shell, setup a
+syslogUdp listener to route to the agentSkink
+
+
+
+  FLUME_HOME/bin/flume shell -c FLUMEMASTER -e 'exec config  NODE_NAME 'syslogUdp(5141)' 'agentSink("COLLECTOR_HOST",35853)'
+
+
+
+
+Appendix
+
+[1] Flume and Log4j - https://issues.cloudera.org/browse/FLUME-27
