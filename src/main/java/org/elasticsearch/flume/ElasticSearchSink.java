@@ -81,7 +81,7 @@ public class ElasticSearchSink extends EventSink.Base {
 
 
     @Override
-    public void close() throws IOException {
+    public void close() throws IOException, InterruptedException {
         super.close();
 
         if (client != null) {
@@ -93,7 +93,7 @@ public class ElasticSearchSink extends EventSink.Base {
     }
 
     @Override
-    public void open() throws IOException {
+    public void open() throws IOException, InterruptedException {
         super.open();
 
         if (hostNames.length == 0) {
