@@ -31,22 +31,16 @@ Getting Started with elasticflume
 
 1. Build it using Maven:
 
-    1.1 Install the Flume library into your local Maven repo (because it's not available in central)
-    Note: the below assumes you have done a 'git clone' of the Flume source, and have built it.
+    Flume is now available via the Cloudera Maven repository, which is already part of this pom, however if you are
+    using a local Maven Repository Manager (Nexus, Artifactory) you will need to add the following URLs to your list of
+    proxies:
 
-        mvn install:install-file -DgroupId=com.cloudera -DartifactId=flume -Dversion=0.9.3-SNAPSHOT -Dclassifier=core -Dfile=$FLUME_HOME/build/flume-0.9.3-SNAPSHOT-core.jar -Dpackaging=jar
+        OSS Sonatype: http://oss.sonatype.org/content/groups/public
+        Cloudera: https://repository.cloudera.com/content/groups/public
 
+    If you're not sure if you do or not, you probably don't, so skip this.
 
-    1.2 If you do NOT have a Maven Repository, skip to the next step.  If you're not sure if you do or not, you probably don't, so skip this.
-
-       If you DO have a Maven Repository Manager (Nexus, Artifactory etc) configured to proxy things, you will need to ensure
-       that it is configured to proxy the Sonatype OSS repository:
-
-            http://oss.sonatype.org/content/groups/public
-
-        Don't forget to mark this to proxy both Releases AND Snapshots (in Nexus, you should configure 2 separate Proxies to host the releases and snapshots respectively)
-
-
+    Don't forget to mark this to proxy both Releases AND Snapshots (in Nexus, you should configure 2 separate Proxies to host the releases and snapshots respectively)
 
     1.3 Build elasticflume
     cd $ELASTICFLUME_HOME
