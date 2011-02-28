@@ -47,10 +47,9 @@
             FIXME: When 0.9.3 is uploaded to Cloudera repository most of this can go away.
          -->
         <dependency>
-            <groupId>com.cloudera</groupId>
+            <groupId>com.cloudera.flume</groupId>
             <artifactId>flume</artifactId>
-            <version>0.9.3</version>
-            <classifier>core</classifier>
+            <version>0.9.3-CDH3B4</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
