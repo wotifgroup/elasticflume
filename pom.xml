@@ -27,6 +27,10 @@
             </snapshots>
             <url>http://oss.sonatype.org/content/groups/public</url>
         </repository>
+        <repository>
+            <id>cloudera</id>
+            <url>https://repository.cloudera.com/content/groups/public</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -36,6 +40,12 @@
             <artifactId>elasticsearch</artifactId>
             <version>0.15.0</version>
         </dependency>
+        
+        <!--
+            Flume and dependencies.
+            
+            FIXME: When 0.9.3 is uploaded to Cloudera repository most of this can go away.
+         -->
         <dependency>
             <groupId>com.cloudera</groupId>
             <artifactId>flume</artifactId>
@@ -44,10 +54,31 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.cloudera.hadoop</groupId> 
+            <artifactId>hadoop-core</artifactId>
+            <version>0.20.2-737</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.collections</groupId>
+            <artifactId>google-collections</artifactId>
+            <version>1.0-rc2</version>
+            <type>jar</type>
+            <scope>provided</scope>
+        </dependency>
+        
+        
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.6.1</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.6.1</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

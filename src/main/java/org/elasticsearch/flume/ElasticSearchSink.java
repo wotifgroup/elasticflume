@@ -19,6 +19,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -45,6 +46,9 @@ public class ElasticSearchSink extends EventSink.Base {
     private String[] hostNames = new String[0];
     private String clusterName = ClusterName.DEFAULT.value();
 
+    // Enabled only for testing
+    private boolean localOnly = false;
+
 
     @Override
     public void append(Event e) throws IOException {
@@ -59,15 +63,14 @@ public class ElasticSearchSink extends EventSink.Base {
                     .field("host", e.getHost())
                     .field("priority", e.getPriority().name());
 
-            if (contentType == null) {
-                builder.startObject("message").field("text", new String(data, charset)).endObject();
-            } else {
-                parser = XContentFactory.xContent(contentType).createParser(data);
-                parser.nextToken();
-                builder.field("message").copyCurrentStructure(parser);
-            }
+            builder.startObject("message");
+            addField(builder, "text", data);
+            builder.endObject();
 
-            // TODO add attributes
+            builder.startObject("fields");
+            for (Map.Entry<String, byte[]> entry : e.getAttrs().entrySet()) {
+                addField(builder, entry.getKey(), entry.getValue());
+            }
             builder.endObject();
 
             IndexResponse response = client.prepareIndex(indexName, LOG_TYPE, null)
@@ -79,6 +82,23 @@ public class ElasticSearchSink extends EventSink.Base {
         }
     }
 
+    private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
+        XContentParser parser = null;
+        try {
+            XContentType contentType = XContentFactory.xContentType(data);
+            if (contentType == null) {
+                builder.field(fieldName, new String(data, charset));
+            } else {
+                parser = XContentFactory.xContent(contentType).createParser(data);
+                parser.nextToken();
+                builder.copyCurrentStructure(parser);
+            }
+        } finally {
+            if (parser != null) {
+                parser.close();
+            }
+        }
+    }
 
     @Override
     public void close() throws IOException, InterruptedException {
@@ -98,7 +118,7 @@ public class ElasticSearchSink extends EventSink.Base {
 
         if (hostNames.length == 0) {
             LOG.info("Using ES AutoDiscovery mode");
-            node = nodeBuilder().client(true).clusterName(clusterName).node();
+            node = nodeBuilder().client(true).clusterName(clusterName).local(localOnly).node();
             client = node.client();
         } else {
             LOG.info("Using provided ES hostnames: " + hostNames.length);
@@ -148,6 +168,14 @@ public class ElasticSearchSink extends EventSink.Base {
 
     public String[] getHostNames() {
         return hostNames;
+    }
+
+    void setLocalOnly(boolean localOnly) {
+        this.localOnly = localOnly;
+    }
+
+    boolean isLocalOnly() {
+        return localOnly;
     }
 
 }
