@@ -98,7 +98,7 @@ public class ElasticSearchSink extends EventSink.Base {
 
         if (hostNames.length == 0) {
             LOG.info("Using ES AutoDiscovery mode");
-            node = nodeBuilder().client(true).node();
+            node = nodeBuilder().client(true).clusterName(clusterName).node();
             client = node.client();
         } else {
             LOG.info("Using provided ES hostnames: " + hostNames.length);
