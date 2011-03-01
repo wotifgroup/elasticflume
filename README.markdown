@@ -160,3 +160,10 @@ Getting Started with elasticflume
 8. So now you have some basic setup to stream logs via Flume into ElasticSearch.  To search the logs, you can use [Mobz elasticsearch-head project](https://github.com/mobz/elasticsearch-head) this will allow you to do searching across the index you create via elasticflume (or any other method).
 
 9. A more complete discussion of how to setup a log4j-based system to stream via flume to elasticsearch can be found in the same directory as this README (log4j-to-elasticsearch).
+
+TODO
+====
+
+# elasticflume currently submits a single event via HTTP (async) to ES.  This isn't that scalable when the firehose of
+events is coming in.  Need to have another Sink that is a RabbitMQToESSink that uses the ES river batching logic (pretty simple)
+
