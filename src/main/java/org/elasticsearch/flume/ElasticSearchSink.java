@@ -33,7 +33,7 @@ public class ElasticSearchSink extends EventSink.Base {
     private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchSink.class);
     private static final String DEFAULT_INDEX_NAME = "flume";
     private static final String LOG_TYPE = "log";
-    private static final int DEFAULT_ELASTICSEARCH_PORT = 9300;
+    private static final int DEFAULT_ELASTICSEARCH_PORT = 9200;
 
     private Node node;
     private Client client;
