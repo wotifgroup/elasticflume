@@ -163,6 +163,7 @@ Getting Started with elasticflume
 
 TODO
 ====
+# Create a standard Mapping script/example that sets up the mappings properly in the index in ES, right now everything is using the defaults in ES which is not optimal in cases like Host and Priority in some cases.
 
 # elasticflume currently submits a single event via HTTP (async) to ES.  This isn't that scalable when the firehose of
 events is coming in.  Need to have another Sink that is a RabbitMQToESSink that uses the ES river batching logic (pretty simple)
