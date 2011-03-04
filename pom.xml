@@ -149,7 +149,7 @@
                                         <source>
                                             <location>target</location>
                                             <includes>
-                                                <include>elasticflume-${project.version}.jar</include>
+                                                <include>elasticflume-${project.version}-jar-with-dependencies.jar</include>
                                             </includes>
                                         </source>
                                     </sources>
