@@ -1,5 +1,5 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>elasticflume</groupId>
@@ -13,7 +13,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
 
     <repositories>
         <repository>
@@ -34,11 +33,10 @@
     </repositories>
 
     <dependencies>
-
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>0.15.0</version>
+            <version>0.15.1</version>
         </dependency>
 
         <dependency>
@@ -66,19 +64,19 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.8.1</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>1.8.0</version>
+            <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
         <plugins>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -113,8 +111,58 @@
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
-
     </build>
+
+    <profiles>
+        <profile>
+            <id>rpm</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>rpm-maven-plugin</artifactId>
+                        <version>2.0.1</version>
+                        <extensions>true</extensions>                       
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>attached-rpm</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <copyright>ASL 2.0 </copyright>
+                            <group>Applications/System</group>
+                            <packager>${user.name}</packager>
+                            <projversion>${project.version}</projversion>
+                            <release>0</release>
+                            <distribution>Integration between Cloudera's Flume and ElasticSearch</distribution>
+                            <summary>Integration between Cloudera's Flume and ElasticSearch</summary>
+                            <name>elasticflume</name>
+                            <mappings>
+                                <mapping>
+                                    <directory>/usr/lib/flume/lib</directory>
+                                    <filemode>755</filemode>
+                                    <sources>
+                                        <source>
+                                            <location>target</location>
+                                            <includes>
+                                                <include>elasticflume-${project.version}-jar-with-dependencies.jar</include>
+                                            </includes>
+                                        </source>
+                                    </sources>
+                                </mapping>
+                            </mappings>
+                            <requires>
+                                <require>jdk</require>
+                                <require>flume</require>
+                            </requires>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
