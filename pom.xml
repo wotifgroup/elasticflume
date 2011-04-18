@@ -36,13 +36,13 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>0.15.1</version>
+            <version>0.15.2</version>
         </dependency>
 
         <dependency>
             <groupId>com.cloudera.flume</groupId>
             <artifactId>flume</artifactId>
-            <version>0.9.3-CDH3B4</version>
+            <version>0.9.3-cdh3u0</version>
             <scope>provided</scope>
         </dependency>
 
