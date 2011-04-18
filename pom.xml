@@ -105,6 +105,7 @@
                             <artifactSet>
                                 <includes>
                                     <include>org.elasticsearch:elasticsearch</include>
+                                    <include>org.apache.lucene</include>
                                 </includes>
                             </artifactSet>
                         </configuration>
