@@ -9,9 +9,9 @@ class ElasticSearchSinkBuilder extends SinkFactory.SinkBuilder {
     @Override
     public EventSink build(Context context, String... argv) {
 
-        if (argv.length > 3) {
+        if (argv.length > 4) {
             throw new IllegalArgumentException(
-                    "usage: elasticSearchSink[([clusterName, indexName, esHostNames])");
+                    "usage: elasticSearchSink[([clusterName, indexName, esHostNames,indexType])");
         }
 
         ElasticSearchSink sink = new ElasticSearchSink();
@@ -25,8 +25,9 @@ class ElasticSearchSinkBuilder extends SinkFactory.SinkBuilder {
         if (argv.length>2) {
             sink.setHostNames(argv[index++].split(","));
         }
-
+        if (argv.length>3) {
+            sink.setIndexType(argv[index++]);
+        }
         return sink;
-
     }
 }

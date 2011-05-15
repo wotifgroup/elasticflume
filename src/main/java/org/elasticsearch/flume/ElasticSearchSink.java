@@ -1,17 +1,7 @@
 package org.elasticsearch.flume;
 
-import com.cloudera.flume.conf.SinkFactory.SinkBuilder;
-import com.cloudera.flume.core.Event;
-import com.cloudera.flume.core.EventSink;
-import com.cloudera.util.Pair;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.cluster.ClusterName;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.node.Node;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -19,25 +9,37 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.elasticsearch.common.xcontent.XContentType;
+import com.cloudera.flume.conf.SinkFactory.SinkBuilder;
+import com.cloudera.flume.core.Event;
+import com.cloudera.flume.core.EventSink;
+import com.cloudera.flume.reporter.ReportEvent;
+import com.cloudera.util.Pair;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.cluster.ClusterName;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
-
-import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.node.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ElasticSearchSink extends EventSink.Base {
 
     private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchSink.class);
     private static final String DEFAULT_INDEX_NAME = "flume";
-    private static final String LOG_TYPE = "log";
+    private static final String DEFAULT_LOG_TYPE = "log";
     private static final int DEFAULT_ELASTICSEARCH_PORT = 9300;
 
     private Node node;
     private Client client;
     private String indexName = DEFAULT_INDEX_NAME;
+
+    private String indexType =  DEFAULT_LOG_TYPE;
 
     private Charset charset = Charset.defaultCharset();
 
@@ -48,14 +50,15 @@ public class ElasticSearchSink extends EventSink.Base {
     // Enabled only for testing
     private boolean localOnly = false;
 
+    private AtomicLong eventErrorCount = new AtomicLong(0L);
+    private static final String NO_OF_FAILED_EVENTS = "NO_OF_FAILED_EVENTS";
 
     @Override
     public void append(Event e) throws IOException {
         // TODO strategize the name of the index, so that logs based on day can go to individula indexes, allowing simple cleanup by deleting older days indexes in ES
         XContentParser parser = null;
+        byte[] data = e.getBody();
         try {
-            byte[] data = e.getBody();
-            XContentType contentType = XContentFactory.xContentType(data);
             XContentBuilder builder = jsonBuilder()
                     .startObject()
                     .field("timestamp", new Date(e.getTimestamp()))
@@ -71,18 +74,28 @@ public class ElasticSearchSink extends EventSink.Base {
                 addField(builder, entry.getKey(), entry.getValue());
             }
             builder.endObject();
-
-            IndexResponse response = client.prepareIndex(indexName, LOG_TYPE, null)
+            client.prepareIndex(indexName, DEFAULT_LOG_TYPE, null)
                     .setSource(builder)
                     .execute()
                     .actionGet();
+        } catch (Exception ex) {
+            LOG.error(String.format("Error Processing event: %s", new String(data)),ex);
+            eventErrorCount.incrementAndGet();
         } finally {
             if (parser != null) parser.close();
         }
     }
 
+    @Override
+    public synchronized ReportEvent getMetrics() { 
+        ReportEvent event = new ReportEvent("ElasticSearchSink");
+        event.setLongMetric(NO_OF_FAILED_EVENTS,eventErrorCount.longValue());
+        return event;
+    }
+
     private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
         XContentParser parser = null;
+        LOG.info(String.format("field: %s, data:%s", fieldName, new String(data)));
         try {
             XContentType contentType = XContentFactory.xContentType(data);
             if (contentType == null) {
@@ -90,6 +103,7 @@ public class ElasticSearchSink extends EventSink.Base {
             } else {
                 parser = XContentFactory.xContent(contentType).createParser(data);
                 parser.nextToken();
+                builder.field(fieldName);
                 builder.copyCurrentStructure(parser);
             }
         } finally {
@@ -144,7 +158,6 @@ public class ElasticSearchSink extends EventSink.Base {
         return builders;
     }
 
-
     public String getClusterName() {
         return clusterName;
     }
@@ -161,6 +174,14 @@ public class ElasticSearchSink extends EventSink.Base {
         this.indexName = indexName;
     }
 
+    public String getIndexType() {
+        return indexType;
+    }
+
+    public void setIndexType(String indexType) {
+        this.indexType = indexType;
+    }
+    
     public void setHostNames(String[] hostNames) {
         this.hostNames = hostNames;
     }
@@ -176,5 +197,4 @@ public class ElasticSearchSink extends EventSink.Base {
     boolean isLocalOnly() {
         return localOnly;
     }
-
 }
