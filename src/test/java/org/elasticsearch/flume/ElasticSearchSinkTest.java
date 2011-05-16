@@ -16,6 +16,7 @@ import com.cloudera.flume.core.Event;
 import com.cloudera.flume.core.Event.Priority;
 import com.cloudera.flume.core.EventImpl;
 import com.cloudera.flume.reporter.ReportEvent;
+import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
@@ -34,6 +35,8 @@ public class ElasticSearchSinkTest {
     private Node searchNode;
 
     private Client searchClient;
+    private static final String INDEX_TYPE = "testIndexType";
+    private static final String INDEX_NAME = "flume";
 
     @Before
     public void startSearchNode() throws Exception {
@@ -87,12 +90,12 @@ public class ElasticSearchSinkTest {
 
         sink.close();
 
-        searchClient.admin().indices().refresh(refreshRequest("flume")).actionGet();
+        searchClient.admin().indices().refresh(refreshRequest(INDEX_NAME)).actionGet();
 
         assertBasicSearch(event);
         assertPrioritySearch(event);
         assertHostSearch(event);
-        assertBodySearch(event);        
+        assertBodySearch(event);
         assertFieldsSearch(event);
     }
 
@@ -108,13 +111,34 @@ public class ElasticSearchSinkTest {
 
         ReportEvent event = sink.getMetrics();
         long noOfFailedEvents = event.getLongMetric("NO_OF_FAILED_EVENTS");
-        assertEquals("1 event should ",noOfFailedEvents,1L);
+        assertEquals("1 event should ", noOfFailedEvents, 1L);
+    }
 
+    @Test
+    public void validateSinkIndexTypeConfiguration() throws IOException, InterruptedException {
+        ElasticSearchSink sink = createAndOpenSinkWithDefaultType();
+        EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
+        sink.append(event);
+        sink.close();
+        searchClient.admin().indices().refresh(refreshRequest(INDEX_NAME)).actionGet();        
+        SearchResponse response = searchClient.prepareSearch(INDEX_NAME).setTypes("log").setQuery(fieldQuery("message.text", "new")).execute().actionGet();
+        assertEquals("There should have been 1 search result for default index type",1,response.getHits().getTotalHits());
+    }
+
+    private ElasticSearchSink createAndOpenSinkWithDefaultType() throws IOException, InterruptedException {
+        return createAndOpenSink("");
     }
 
     private ElasticSearchSink createAndOpenSink() throws IOException, InterruptedException {
+        return createAndOpenSink(INDEX_TYPE);
+    }
+
+    private ElasticSearchSink createAndOpenSink(String indexType) throws IOException, InterruptedException {
         ElasticSearchSink sink = new ElasticSearchSink();
         sink.setLocalOnly(true);
+        if (StringUtils.isNotBlank(indexType)) {
+            sink.setIndexType(indexType);
+        }
         sink.open();
         return sink;
     }
@@ -134,25 +158,25 @@ public class ElasticSearchSinkTest {
     private void assertBodySearch(Event event) {
         assertCorrectResponse(1, event, executeSearch(fieldQuery("message.text", "goes")));
     }
-    
+
     private void assertFieldsSearch(Event event) {
         assertCorrectResponse(1, event, executeSearch(fieldQuery("fields.attr1", "quux")));
     }
-    
+
     private SearchResponse executeSearch(XContentQueryBuilder query) {
-        return searchClient.prepareSearch("flume")
+        return searchClient.prepareSearch(INDEX_NAME).setTypes(INDEX_TYPE)
                 .setQuery(query)
                 .execute()
                 .actionGet();
     }
-    
+
     private void assertCorrectResponse(int count, Event event, SearchResponse response) {
         SearchHits hits = response.getHits();
 
         assertEquals(count, hits.getTotalHits());
 
         SearchHit hit = hits.getAt(0);
-        
+
         Map<String, Object> source = hit.getSource();
 
         assertEquals(event.getHost(), source.get("host"));
@@ -169,5 +193,4 @@ public class ElasticSearchSinkTest {
         assertEquals(new String(event.getAttrs().get("attr1")), fields.get("attr1"));
         assertEquals(new String(event.getAttrs().get("attr2")), fields.get("attr2"));
     }
-
 }

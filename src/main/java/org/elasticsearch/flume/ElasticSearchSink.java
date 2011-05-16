@@ -74,7 +74,7 @@ public class ElasticSearchSink extends EventSink.Base {
                 addField(builder, entry.getKey(), entry.getValue());
             }
             builder.endObject();
-            client.prepareIndex(indexName, DEFAULT_LOG_TYPE, null)
+            client.prepareIndex(indexName, indexType, null)
                     .setSource(builder)
                     .execute()
                     .actionGet();
