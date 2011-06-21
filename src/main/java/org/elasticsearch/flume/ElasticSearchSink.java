@@ -6,6 +6,7 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,8 @@ import com.cloudera.util.Pair;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.ClusterName;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -134,8 +137,13 @@ public class ElasticSearchSink extends EventSink.Base {
             node = nodeBuilder().client(true).clusterName(clusterName).local(localOnly).node();
             client = node.client();
         } else {
-            LOG.info("Using provided ES hostnames: " + hostNames.length);
-            TransportClient transportClient = new TransportClient();
+            LOG.info("Using provided ES hostnames: " + Arrays.toString(hostNames));
+            
+            Settings settings = ImmutableSettings.settingsBuilder()
+                .put("cluster.name", clusterName)
+                .build();
+                
+            TransportClient transportClient = new TransportClient(settings);
             for (String esHostName : hostNames) {
                 LOG.info("Adding TransportClient: " + esHostName);
                 transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress(esHostName, DEFAULT_ELASTICSEARCH_PORT));
