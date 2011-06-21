@@ -6,6 +6,7 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +135,7 @@ public class ElasticSearchSink extends EventSink.Base {
             node = nodeBuilder().client(true).clusterName(clusterName).local(localOnly).node();
             client = node.client();
         } else {
-            LOG.info("Using provided ES hostnames: " + hostNames.length);
+            LOG.info("Using provided ES hostnames: " + Arrays.toString(hostNames));
             TransportClient transportClient = new TransportClient();
             for (String esHostName : hostNames) {
                 LOG.info("Adding TransportClient: " + esHostName);
