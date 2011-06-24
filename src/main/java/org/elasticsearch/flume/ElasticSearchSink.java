@@ -95,7 +95,9 @@ public class ElasticSearchSink extends EventSink.Base {
 
     private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
         XContentParser parser = null;
-        LOG.debug("field: {}, data: {}", fieldName, new String(data));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("field: {}, data: {}", fieldName, new String(data));
+        }
         try {
             XContentType contentType = XContentFactory.xContentType(data);
             if (contentType == null) {
