@@ -81,7 +81,7 @@ public class ElasticSearchSink extends EventSink.Base {
                     .execute()
                     .actionGet();
         } catch (Exception ex) {
-            LOG.error(String.format("Error Processing event: %s", new String(data)),ex);
+            LOG.error("Error Processing event: {}", new String(data), ex);
             eventErrorCount.incrementAndGet();
         }
     }
@@ -95,7 +95,7 @@ public class ElasticSearchSink extends EventSink.Base {
 
     private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
         XContentParser parser = null;
-        LOG.info(String.format("field: %s, data:%s", fieldName, new String(data)));
+        LOG.debug("field: {}, data: {}", fieldName, new String(data));
         try {
             XContentType contentType = XContentFactory.xContentType(data);
             if (contentType == null) {
@@ -134,7 +134,7 @@ public class ElasticSearchSink extends EventSink.Base {
             node = nodeBuilder().client(true).clusterName(clusterName).local(localOnly).node();
             client = node.client();
         } else {
-            LOG.info("Using provided ES hostnames: " + Arrays.toString(hostNames));
+            LOG.info("Using provided ES hostnames: {} ", Arrays.toString(hostNames));
             
             Settings settings = ImmutableSettings.settingsBuilder()
                 .put("cluster.name", clusterName)
@@ -142,7 +142,7 @@ public class ElasticSearchSink extends EventSink.Base {
                 
             TransportClient transportClient = new TransportClient(settings);
             for (String esHostName : hostNames) {
-                LOG.info("Adding TransportClient: " + esHostName);
+                LOG.info("Adding TransportClient: {}", esHostName);
                 transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress(esHostName, DEFAULT_ELASTICSEARCH_PORT));
             }
             client = transportClient;
