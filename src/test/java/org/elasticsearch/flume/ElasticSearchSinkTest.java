@@ -43,6 +43,7 @@ public class ElasticSearchSinkTest {
         Settings settings = settingsBuilder()
                 .put("gateway.type", "local")
                 .put("node.local", "true")
+                .put("http.enabled", false)
                 .put("index.store.type", "memory")
                 .put("index.number_of_shards", "1")
                 .put("index.number_of_replicas", "1")
