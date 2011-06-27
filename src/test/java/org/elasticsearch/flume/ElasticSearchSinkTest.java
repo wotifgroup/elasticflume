@@ -15,6 +15,7 @@ import java.util.Map;
 import com.cloudera.flume.core.Event;
 import com.cloudera.flume.core.Event.Priority;
 import com.cloudera.flume.core.EventImpl;
+import com.cloudera.flume.core.EventSink;
 import com.cloudera.flume.reporter.ReportEvent;
 import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.search.SearchResponse;
@@ -83,9 +84,13 @@ public class ElasticSearchSinkTest {
 
         sink.append(event);
         sink.append(new EventImpl("bleh foo baz bar".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost"));
-        EventImpl jsonEvent = new EventImpl(("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270," +
-                "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\"," +
-                "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}}").getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost");
+        EventImpl jsonEvent = new EventImpl(
+                ("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270,"
+                        +
+                        "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\","
+                        +
+                        "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}}").getBytes(), 1, Priority.DEBUG, System.nanoTime(),
+                "notlocalhost");
         sink.append(jsonEvent);
 
         sink.close();
@@ -103,9 +108,13 @@ public class ElasticSearchSinkTest {
     public void validateErrorCount() throws IOException, InterruptedException {
         ElasticSearchSink sink = createAndOpenSink();
 
-        EventImpl invalidJsonEvent1 = new EventImpl(("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270," +
-                "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\"," +
-                "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}").getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost");
+        EventImpl invalidJsonEvent1 = new EventImpl(
+                ("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270,"
+                        +
+                        "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\","
+                        +
+                        "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}").getBytes(), 1, Priority.DEBUG, System.nanoTime(),
+                "notlocalhost");
         sink.append(invalidJsonEvent1);
         sink.close();
 
@@ -116,26 +125,38 @@ public class ElasticSearchSinkTest {
 
     @Test
     public void validateSinkIndexTypeConfiguration() throws IOException, InterruptedException {
-        ElasticSearchSink sink = createAndOpenSinkWithDefaultType();
+        assertSimpleTest(createAndOpenSink("", "log", ""), INDEX_NAME, "log");
+    }
+
+    @Test
+    public void validateIndexNamePatternUsed() throws IOException, InterruptedException {
+        assertSimpleTest(createAndOpenSink("", "log", "%Y-%m-%d"), "1970-01-01", "log");
+    }
+
+    private void assertSimpleTest(EventSink sink, String indexName, String indexType) throws IOException, InterruptedException {
         EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
         sink.append(event);
         sink.close();
-        searchClient.admin().indices().refresh(refreshRequest(INDEX_NAME)).actionGet();        
-        SearchResponse response = searchClient.prepareSearch(INDEX_NAME).setTypes("log").setQuery(fieldQuery("message.text", "new")).execute().actionGet();
-        assertEquals("There should have been 1 search result for default index type",1,response.getHits().getTotalHits());
-    }
 
-    private ElasticSearchSink createAndOpenSinkWithDefaultType() throws IOException, InterruptedException {
-        return createAndOpenSink("");
+        searchClient.admin().indices().refresh(refreshRequest(indexName)).actionGet();
+        SearchResponse response = searchClient.prepareSearch(indexName).setTypes(indexType)
+                .setQuery(fieldQuery("message.text", "new")).execute().actionGet();
+        assertEquals("There should have been 1 search result for default index type", 1, response.getHits().getTotalHits());
     }
 
     private ElasticSearchSink createAndOpenSink() throws IOException, InterruptedException {
-        return createAndOpenSink(INDEX_TYPE);
+        return createAndOpenSink(INDEX_NAME, INDEX_TYPE, "");
     }
 
-    private ElasticSearchSink createAndOpenSink(String indexType) throws IOException, InterruptedException {
+    private ElasticSearchSink createAndOpenSink(String indexName, String indexType, String indexPattern) throws IOException, InterruptedException {
         ElasticSearchSink sink = new ElasticSearchSink();
         sink.setLocalOnly(true);
+        if (StringUtils.isNotBlank(indexName)) {
+            sink.setIndexName(indexName);
+        }
+        if (StringUtils.isNotBlank(indexPattern)) {
+            sink.setIndexPattern(indexPattern);
+        }
         if (StringUtils.isNotBlank(indexType)) {
             sink.setIndexType(indexType);
         }
@@ -164,7 +185,11 @@ public class ElasticSearchSinkTest {
     }
 
     private SearchResponse executeSearch(XContentQueryBuilder query) {
-        return searchClient.prepareSearch(INDEX_NAME).setTypes(INDEX_TYPE)
+        return executeSearch(query, INDEX_NAME, INDEX_TYPE);
+    }
+
+    private SearchResponse executeSearch(XContentQueryBuilder query, String indexName, String indexType) {
+        return searchClient.prepareSearch(indexName).setTypes(indexType)
                 .setQuery(query)
                 .execute()
                 .actionGet();

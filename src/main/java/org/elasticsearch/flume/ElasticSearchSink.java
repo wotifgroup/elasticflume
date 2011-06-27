@@ -41,7 +41,7 @@ public class ElasticSearchSink extends EventSink.Base {
     private Node node;
     private Client client;
     private String indexName = DEFAULT_INDEX_NAME;
-
+    private String indexPattern = null;
     private String indexType =  DEFAULT_LOG_TYPE;
 
     private Charset charset = Charset.defaultCharset();
@@ -77,7 +77,12 @@ public class ElasticSearchSink extends EventSink.Base {
                 addField(builder, entry.getKey(), entry.getValue());
             }
             builder.endObject();
-            client.prepareIndex(indexName, indexType, null)
+            
+            String iName = indexName;
+            if (indexPattern != null) {
+                iName = e.escapeString(indexPattern);
+            }
+            client.prepareIndex(iName, indexType, null)
                     .setSource(builder)
                     .execute()
                     .actionGet();
@@ -182,6 +187,14 @@ public class ElasticSearchSink extends EventSink.Base {
         this.indexName = indexName;
     }
 
+    public String getIndexPattern() {
+        return indexPattern;
+    }
+    
+    public void setIndexPattern(String indexPattern) {
+        this.indexPattern = indexPattern;
+    }
+    
     public String getIndexType() {
         return indexType;
     }
