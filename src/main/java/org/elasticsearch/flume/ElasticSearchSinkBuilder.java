@@ -11,21 +11,21 @@ class ElasticSearchSinkBuilder extends SinkFactory.SinkBuilder {
 
         if (argv.length > 4) {
             throw new IllegalArgumentException(
-                    "usage: elasticSearchSink[([clusterName, indexName, esHostNames,indexType])");
+                    "usage: elasticSearchSink[([clusterName, indexName, esHostNames, indexType])");
         }
 
         ElasticSearchSink sink = new ElasticSearchSink();
         int index = 0;
-        if (argv.length>0) {
+        if (argv.length > 0) {
             sink.setClusterName(argv[index++]);
         }
-        if (argv.length>1) {
+        if (argv.length > 1) {
             sink.setIndexName(argv[index++]);
         }
-        if (argv.length>2) {
+        if (argv.length > 2) {
             sink.setHostNames(argv[index++].split(","));
         }
-        if (argv.length>3) {
+        if (argv.length > 3) {
             sink.setIndexType(argv[index++]);
         }
         return sink;
