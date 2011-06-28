@@ -11,6 +11,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.cloudera.flume.core.Event;
 import com.cloudera.flume.core.Event.Priority;
@@ -125,30 +126,42 @@ public class ElasticSearchSinkTest {
 
     @Test
     public void validateSinkIndexTypeConfiguration() throws IOException, InterruptedException {
-        assertSimpleTest(createAndOpenSink("", "log", ""), INDEX_NAME, "log");
+        EventSink sink = createAndOpenSink("", "log", "");
+
+        EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
+        sink.append(event);
+        sink.close();
+        
+        assertSimpleTest(INDEX_NAME, "log", 1);
     }
 
     @Test
     public void validateIndexNamePatternUsed() throws IOException, InterruptedException {
-        assertSimpleTest(createAndOpenSink("", "log", "%Y-%m-%d"), "1970-01-01", "log");
-    }
-
-    private void assertSimpleTest(EventSink sink, String indexName, String indexType) throws IOException, InterruptedException {
-        EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
-        sink.append(event);
+        ElasticSearchSink sink = createAndOpenSink("", "log", "%Y-%m-%d");
+        
+        sink.append(new EventImpl("new index message".getBytes(), 0, Priority.WARN, System.nanoTime(), "notlocalhost"));
+        sink.append(new EventImpl("new index message".getBytes(), TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS), Priority.WARN, System.nanoTime(), "notlocalhost"));
         sink.close();
 
+        assertSimpleTest("1970-01-01", "log", 1);
+        assertSimpleTest("1970-01-02", "log", 1);
+        assertSimpleTest(INDEX_NAME, "log", 2);
+    }
+
+    private void assertSimpleTest(String indexName, String indexType, int hits) {
         searchClient.admin().indices().refresh(refreshRequest(indexName)).actionGet();
         SearchResponse response = searchClient.prepareSearch(indexName).setTypes(indexType)
                 .setQuery(fieldQuery("message.text", "new")).execute().actionGet();
-        assertEquals("There should have been 1 search result for default index type", 1, response.getHits().getTotalHits());
+        assertEquals("There should have been " + hits + " search result for default index type", hits, response.getHits().getTotalHits());
     }
 
+    
     private ElasticSearchSink createAndOpenSink() throws IOException, InterruptedException {
         return createAndOpenSink(INDEX_NAME, INDEX_TYPE, "");
     }
 
-    private ElasticSearchSink createAndOpenSink(String indexName, String indexType, String indexPattern) throws IOException, InterruptedException {
+    private ElasticSearchSink createAndOpenSink(String indexName, String indexType, String indexPattern) throws IOException,
+            InterruptedException {
         ElasticSearchSink sink = new ElasticSearchSink();
         sink.setLocalOnly(true);
         if (StringUtils.isNotBlank(indexName)) {

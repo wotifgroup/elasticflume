@@ -78,14 +78,7 @@ public class ElasticSearchSink extends EventSink.Base {
             }
             builder.endObject();
             
-            String iName = indexName;
-            if (indexPattern != null) {
-                iName = e.escapeString(indexPattern);
-            }
-            client.prepareIndex(iName, indexType, null)
-                    .setSource(builder)
-                    .execute()
-                    .actionGet();
+            index(e, builder);
         } catch (Exception ex) {
             LOG.error(String.format("Error Processing event: %s", new String(data)),ex);
             eventErrorCount.incrementAndGet();
@@ -101,6 +94,21 @@ public class ElasticSearchSink extends EventSink.Base {
         return event;
     }
 
+    private void index(Event e, XContentBuilder builder) {
+        String iName = indexName;
+        if (indexPattern != null) {
+            iName = e.escapeString(indexPattern);
+        }
+        client.prepareIndex(iName, indexType, null)
+                .setSource(builder)
+                .execute()
+                .actionGet();
+
+        if (!iName.equals(indexName)) {
+            client.admin().indices().prepareAliases().addAlias(iName, indexName).execute().actionGet();
+        }
+    }
+    
     private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
         XContentParser parser = null;
         LOG.info(String.format("field: %s, data:%s", fieldName, new String(data)));
