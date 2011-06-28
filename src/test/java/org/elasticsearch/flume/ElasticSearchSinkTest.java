@@ -12,10 +12,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.cloudera.flume.core.Event;
-import com.cloudera.flume.core.Event.Priority;
-import com.cloudera.flume.core.EventImpl;
-import com.cloudera.flume.reporter.ReportEvent;
 import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -30,6 +26,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.cloudera.flume.core.Event;
+import com.cloudera.flume.core.Event.Priority;
+import com.cloudera.flume.core.EventImpl;
+import com.cloudera.flume.reporter.ReportEvent;
+
 public class ElasticSearchSinkTest {
 
     private Node searchNode;
@@ -41,8 +42,9 @@ public class ElasticSearchSinkTest {
     @Before
     public void startSearchNode() throws Exception {
         Settings settings = settingsBuilder()
-                .put("gateway.type", "local")
+                .put("gateway.type", "none")
                 .put("node.local", "true")
+                .put("http.enabled", false)
                 .put("index.store.type", "memory")
                 .put("index.number_of_shards", "1")
                 .put("index.number_of_replicas", "1")
@@ -77,16 +79,15 @@ public class ElasticSearchSinkTest {
         Map<String, byte[]> attributes = new HashMap<String, byte[]>();
         attributes.put("attr1", new String("qux quux quuux").getBytes());
         attributes.put("attr2", new String("value2").getBytes());
+        attributes.put("attr3", new String("{\"key\":\"value\"}").getBytes());
 
         Event event = new EventImpl("message goes here".getBytes(), 0, Priority.INFO, System.nanoTime(),
                 "localhost", attributes);
 
         sink.append(event);
         sink.append(new EventImpl("bleh foo baz bar".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost"));
-        EventImpl jsonEvent = new EventImpl(("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270," +
-                "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\"," +
-                "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}}").getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost");
-        sink.append(jsonEvent);
+        sink.append(new EventImpl("{\"key\":\"value\"}".getBytes(), 2, Priority.DEBUG, System.nanoTime(), "jsonbody"));
+        sink.append(new EventImpl("{\"key\":\"value\",\"complex\":{\"subkey\":\"subvalue\"}}".getBytes(), 3, Priority.DEBUG, System.nanoTime(), "complexjsonbody"));
 
         sink.close();
 
@@ -97,15 +98,15 @@ public class ElasticSearchSinkTest {
         assertHostSearch(event);
         assertBodySearch(event);
         assertFieldsSearch(event);
+        assertJsonBody(event);
+        assertComplexJsonBody(event);
     }
 
     @Test
     public void validateErrorCount() throws IOException, InterruptedException {
         ElasticSearchSink sink = createAndOpenSink();
 
-        EventImpl invalidJsonEvent1 = new EventImpl(("{\"host\":\"host.name\",\"logger\":\"org.elasticsearch.flume\",\"level\":\"DEBUG\",\"timestamp\":1305075450270," +
-                "\"threadName\":\"org.elasticsearch.flume.spring.scheduling.timer.ReschedulingTimerFactoryBean#2\",\"message\":\"Testing Json string creation\"," +
-                "\"MDC\":{\"id\":\"123\",\"projectId\":\"334\"}").getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost");
+        EventImpl invalidJsonEvent1 = new EventImpl("{ \"not json\" : no".getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost") ;
         sink.append(invalidJsonEvent1);
         sink.close();
 
@@ -120,9 +121,10 @@ public class ElasticSearchSinkTest {
         EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
         sink.append(event);
         sink.close();
-        searchClient.admin().indices().refresh(refreshRequest(INDEX_NAME)).actionGet();        
-        SearchResponse response = searchClient.prepareSearch(INDEX_NAME).setTypes("log").setQuery(fieldQuery("message.text", "new")).execute().actionGet();
-        assertEquals("There should have been 1 search result for default index type",1,response.getHits().getTotalHits());
+        searchClient.admin().indices().refresh(refreshRequest(INDEX_NAME)).actionGet();
+        SearchResponse response = searchClient.prepareSearch(INDEX_NAME).setTypes("log")
+                .setQuery(fieldQuery("message.text", "new")).execute().actionGet();
+        assertEquals("There should have been 1 search result for default index type", 1, response.getHits().getTotalHits());
     }
 
     private ElasticSearchSink createAndOpenSinkWithDefaultType() throws IOException, InterruptedException {
@@ -144,7 +146,7 @@ public class ElasticSearchSinkTest {
     }
 
     private void assertBasicSearch(Event event) {
-        assertCorrectResponse(3, event, executeSearch(matchAllQuery()));
+        assertCorrectResponse(4, event, executeSearch(matchAllQuery()));
     }
 
     private void assertPrioritySearch(Event event) {
@@ -161,6 +163,24 @@ public class ElasticSearchSinkTest {
 
     private void assertFieldsSearch(Event event) {
         assertCorrectResponse(1, event, executeSearch(fieldQuery("fields.attr1", "quux")));
+    }
+
+    private void assertJsonBody(Event event) {
+        SearchResponse response = executeSearch(queryString("host:jsonbody"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> json = (Map<String, Object>) response.getHits().getAt(0).getSource().get("message");
+        assertEquals("value", json.get("key"));
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void assertComplexJsonBody(Event event) {
+        SearchResponse response = executeSearch(queryString("host:complexjsonbody"));
+
+        Map<String, Object> json = (Map<String, Object>) response.getHits().getAt(0).getSource().get("message");
+        assertEquals("value", json.get("key"));
+
+        json = (Map<String, Object>) json.get("complex");
+        assertEquals("subvalue", json.get("subkey"));
     }
 
     private SearchResponse executeSearch(XContentQueryBuilder query) {
@@ -192,5 +212,9 @@ public class ElasticSearchSinkTest {
 
         assertEquals(new String(event.getAttrs().get("attr1")), fields.get("attr1"));
         assertEquals(new String(event.getAttrs().get("attr2")), fields.get("attr2"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> attr3 = (Map<String, Object>) fields.get("attr3");
+        assertEquals("value", attr3.get("key"));
     }
+
 }

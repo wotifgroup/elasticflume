@@ -42,10 +42,9 @@ public class ElasticSearchSink extends EventSink.Base {
     private Client client;
     private String indexName = DEFAULT_INDEX_NAME;
 
-    private String indexType =  DEFAULT_LOG_TYPE;
+    private String indexType = DEFAULT_LOG_TYPE;
 
     private Charset charset = Charset.defaultCharset();
-
 
     private String[] hostNames = new String[0];
     private String clusterName = ClusterName.DEFAULT.value();
@@ -58,9 +57,8 @@ public class ElasticSearchSink extends EventSink.Base {
 
     @Override
     public void append(Event e) throws IOException {
-        // TODO strategize the name of the index, so that logs based on day can go to individula indexes, allowing simple cleanup by deleting older days indexes in ES
-        XContentParser parser = null;
-        byte[] data = e.getBody();
+        // TODO strategize the name of the index, so that logs based on day can go to individula indexes, allowing simple cleanup
+        // by deleting older days indexes in ES
         try {
             XContentBuilder builder = jsonBuilder()
                     .startObject()
@@ -68,47 +66,70 @@ public class ElasticSearchSink extends EventSink.Base {
                     .field("host", e.getHost())
                     .field("priority", e.getPriority().name());
 
-            builder.startObject("message");
-            addField(builder, "text", data);
-            builder.endObject();
+            addBody(builder, e.getBody());
 
-            builder.startObject("fields");
-            for (Map.Entry<String, byte[]> entry : e.getAttrs().entrySet()) {
-                addField(builder, entry.getKey(), entry.getValue());
-            }
-            builder.endObject();
+            addAttrs(builder, e.getAttrs());
+
             client.prepareIndex(indexName, indexType, null)
                     .setSource(builder)
                     .execute()
                     .actionGet();
         } catch (Exception ex) {
-            LOG.error(String.format("Error Processing event: %s", new String(data)),ex);
+            LOG.error("Error Processing event: {}", e.toString(), ex);
             eventErrorCount.incrementAndGet();
-        } finally {
-            if (parser != null) parser.close();
         }
     }
 
     @Override
-    public synchronized ReportEvent getMetrics() { 
+    public synchronized ReportEvent getMetrics() {
         ReportEvent event = new ReportEvent("ElasticSearchSink");
-        event.setLongMetric(NO_OF_FAILED_EVENTS,eventErrorCount.longValue());
+        event.setLongMetric(NO_OF_FAILED_EVENTS, eventErrorCount.longValue());
         return event;
     }
 
-    private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
-        XContentParser parser = null;
-        LOG.info(String.format("field: %s, data:%s", fieldName, new String(data)));
-        try {
-            XContentType contentType = XContentFactory.xContentType(data);
-            if (contentType == null) {
-                builder.field(fieldName, new String(data, charset));
-            } else {
-                parser = XContentFactory.xContent(contentType).createParser(data);
-                parser.nextToken();
-                builder.field(fieldName);
-                builder.copyCurrentStructure(parser);
+    private void addBody(XContentBuilder builder, byte[] data) throws IOException {
+        XContentType contentType = XContentFactory.xContentType(data);
+
+        if (contentType == null) {
+            builder.startObject("message");
+            addSimpleField(builder, "text", data);
+            builder.endObject();
+        } else {
+            addComplexField(builder, "message", contentType, data);
+        }
+    }
+
+    private void addAttrs(XContentBuilder builder, Map<String, byte[]> attrs) throws IOException {
+        builder.startObject("fields");
+        for (Map.Entry<String, byte[]> entry : attrs.entrySet()) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("field: {}, data: {}", entry.getKey(), new String(entry.getValue()));
             }
+            addField(builder, entry.getKey(), entry.getValue());
+        }
+        builder.endObject();
+    }
+
+    private void addField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
+        XContentType contentType = XContentFactory.xContentType(data);
+        if (contentType == null) {
+            addSimpleField(builder, fieldName, data);
+        } else {
+            addComplexField(builder, fieldName, contentType, data);
+        }
+    }
+
+    private void addSimpleField(XContentBuilder builder, String fieldName, byte[] data) throws IOException {
+        builder.field(fieldName, new String(data, charset));
+    }
+
+    private void addComplexField(XContentBuilder builder, String fieldName, XContentType contentType, byte[] data)
+            throws IOException {
+        XContentParser parser = null;
+        try {
+            parser = XContentFactory.xContent(contentType).createParser(data);
+            parser.nextToken();
+            builder.field(fieldName).copyCurrentStructure(parser);
         } finally {
             if (parser != null) {
                 parser.close();
@@ -137,26 +158,25 @@ public class ElasticSearchSink extends EventSink.Base {
             node = nodeBuilder().client(true).clusterName(clusterName).local(localOnly).node();
             client = node.client();
         } else {
-            LOG.info("Using provided ES hostnames: " + Arrays.toString(hostNames));
-            
+            LOG.info("Using provided ES hostnames: {} ", Arrays.toString(hostNames));
+
             Settings settings = ImmutableSettings.settingsBuilder()
-                .put("cluster.name", clusterName)
-                .build();
-                
+                    .put("cluster.name", clusterName)
+                    .build();
+
             TransportClient transportClient = new TransportClient(settings);
             for (String esHostName : hostNames) {
-                LOG.info("Adding TransportClient: " + esHostName);
-                transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress(esHostName, DEFAULT_ELASTICSEARCH_PORT));
+                LOG.info("Adding TransportClient: {}", esHostName);
+                transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress(esHostName,
+                        DEFAULT_ELASTICSEARCH_PORT));
             }
             client = transportClient;
         }
 
     }
 
-
     /**
-     * This is a special function used by the SourceFactory to pull in this class
-     * as a plugin sink.
+     * This is a special function used by the SourceFactory to pull in this class as a plugin sink.
      */
     public static List<Pair<String, SinkBuilder>> getSinkBuilders() {
         List<Pair<String, SinkBuilder>> builders =
@@ -189,7 +209,7 @@ public class ElasticSearchSink extends EventSink.Base {
     public void setIndexType(String indexType) {
         this.indexType = indexType;
     }
-    
+
     public void setHostNames(String[] hostNames) {
         this.hostNames = hostNames;
     }
