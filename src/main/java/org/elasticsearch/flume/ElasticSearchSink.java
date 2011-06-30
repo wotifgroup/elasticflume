@@ -57,8 +57,6 @@ public class ElasticSearchSink extends EventSink.Base {
 
     @Override
     public void append(Event e) throws IOException {
-        // TODO strategize the name of the index, so that logs based on day can go to individula indexes, allowing simple cleanup
-        // by deleting older days indexes in ES
         try {
             XContentBuilder builder = jsonBuilder()
                     .startObject()
