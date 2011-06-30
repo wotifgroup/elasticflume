@@ -114,6 +114,7 @@ Getting Started with elasticflume
    type (and yes, straight after all those log messages, just start typing, trust me..):
 
     hello world
+
     hello there good sir
 
     (ie. that is, type the 2 lines ensuring you press return after each)
