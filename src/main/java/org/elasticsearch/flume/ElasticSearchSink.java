@@ -17,7 +17,10 @@ import com.cloudera.flume.core.Event;
 import com.cloudera.flume.core.EventSink;
 import com.cloudera.flume.reporter.ReportEvent;
 import com.cloudera.util.Pair;
+
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -137,10 +140,16 @@ public class ElasticSearchSink extends EventSink.Base {
         if (indexPattern != null) {
             iName = e.escapeString(indexPattern);
         }
-        client.prepareIndex(iName, indexType, null)
-                .setSource(builder)
-                .execute()
-                .actionGet();
+        BulkRequestBuilder bulkRequest = client.prepareBulk();
+        
+        bulkRequest.add(client.prepareIndex(iName, indexType, null)
+                .setSource(builder).request());
+        
+        BulkResponse bulkResponse = bulkRequest.execute().actionGet();
+        
+        if (bulkResponse.hasFailures()) {
+            throw new RuntimeException("Failed to index message. " + bulkResponse.items()[0].failureMessage());
+        }
 
         if (!iName.equals(indexName)) {
             client.admin().indices().prepareAliases().addAlias(iName, indexName).execute().actionGet();
