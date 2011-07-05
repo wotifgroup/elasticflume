@@ -130,14 +130,14 @@ public class ElasticSearchSinkTest {
 
     @Test
     public void validateIndexNamePatternUsed() throws IOException, InterruptedException {
-        ElasticSearchSink sink = createAndOpenSink("", "log", "%Y-%m-%d");
+        ElasticSearchSink sink = createAndOpenSink("", "log", "test_%Y-%m-%d");
         
         sink.append(new EventImpl("new index message".getBytes(), 0, Priority.WARN, System.nanoTime(), "notlocalhost"));
         sink.append(new EventImpl("new index message".getBytes(), TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS), Priority.WARN, System.nanoTime(), "notlocalhost"));
         sink.close();
 
-        assertSimpleTest("1970-01-01", "log", 1);
-        assertSimpleTest("1970-01-02", "log", 1);
+        assertSimpleTest("test_1970-01-01", "log", 1);
+        assertSimpleTest("test_1970-01-02", "log", 1);
         assertSimpleTest(INDEX_NAME, "log", 2);
     }
 
