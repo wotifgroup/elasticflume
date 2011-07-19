@@ -2,9 +2,9 @@ package org.elasticsearch.flume;
 
 import static org.elasticsearch.client.Requests.refreshRequest;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
-import static org.elasticsearch.index.query.xcontent.QueryBuilders.fieldQuery;
-import static org.elasticsearch.index.query.xcontent.QueryBuilders.matchAllQuery;
-import static org.elasticsearch.index.query.xcontent.QueryBuilders.queryString;
+import static org.elasticsearch.index.query.QueryBuilders.fieldQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
+import static org.elasticsearch.index.query.QueryBuilders.queryString;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 import static org.junit.Assert.assertEquals;
 
@@ -18,7 +18,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.gateway.Gateway;
-import org.elasticsearch.index.query.xcontent.XContentQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
 import org.elasticsearch.search.SearchHit;
@@ -89,7 +89,8 @@ public class ElasticSearchSinkTest {
         sink.append(event);
         sink.append(new EventImpl("bleh foo baz bar".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost"));
         sink.append(new EventImpl("{\"key\":\"value\"}".getBytes(), 2, Priority.DEBUG, System.nanoTime(), "jsonbody"));
-        sink.append(new EventImpl("{\"key\":\"value\",\"complex\":{\"subkey\":\"subvalue\"}}".getBytes(), 3, Priority.DEBUG, System.nanoTime(), "complexjsonbody"));
+        sink.append(new EventImpl("{\"key\":\"value\",\"complex\":{\"subkey\":\"subvalue\"}}".getBytes(), 3, Priority.DEBUG,
+                System.nanoTime(), "complexjsonbody"));
 
         sink.close();
 
@@ -108,7 +109,8 @@ public class ElasticSearchSinkTest {
     public void validateErrorCount() throws IOException, InterruptedException {
         ElasticSearchSink sink = createAndOpenSink();
 
-        EventImpl invalidJsonEvent1 = new EventImpl("{ \"not json\" : no".getBytes(), 1, Priority.DEBUG, System.nanoTime(), "notlocalhost") ;
+        EventImpl invalidJsonEvent1 = new EventImpl("{ \"not json\" : no".getBytes(), 1, Priority.DEBUG, System.nanoTime(),
+                "notlocalhost");
         sink.append(invalidJsonEvent1);
         sink.close();
 
@@ -124,16 +126,17 @@ public class ElasticSearchSinkTest {
         EventImpl event = new EventImpl("new index message".getBytes(), 1, Priority.WARN, System.nanoTime(), "notlocalhost");
         sink.append(event);
         sink.close();
-        
+
         assertSimpleTest(INDEX_NAME, "log", 1);
     }
 
     @Test
     public void validateIndexNamePatternUsed() throws IOException, InterruptedException {
         ElasticSearchSink sink = createAndOpenSink("", "log", "test_%Y-%m-%d");
-        
+
         sink.append(new EventImpl("new index message".getBytes(), 0, Priority.WARN, System.nanoTime(), "notlocalhost"));
-        sink.append(new EventImpl("new index message".getBytes(), TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS), Priority.WARN, System.nanoTime(), "notlocalhost"));
+        sink.append(new EventImpl("new index message".getBytes(), TimeUnit.MILLISECONDS.convert(1, TimeUnit.DAYS), Priority.WARN,
+                System.nanoTime(), "notlocalhost"));
         sink.close();
 
         assertSimpleTest("test_1970-01-01", "log", 1);
@@ -145,10 +148,10 @@ public class ElasticSearchSinkTest {
         searchClient.admin().indices().refresh(refreshRequest(indexName)).actionGet();
         SearchResponse response = searchClient.prepareSearch(indexName).setTypes(indexType)
                 .setQuery(fieldQuery("message.text", "new")).execute().actionGet();
-        assertEquals("There should have been " + hits + " search result for default index type", hits, response.getHits().getTotalHits());
+        assertEquals("There should have been " + hits + " search result for default index type", hits, response.getHits()
+                .getTotalHits());
     }
 
-    
     private ElasticSearchSink createAndOpenSink() throws IOException, InterruptedException {
         return createAndOpenSink(INDEX_NAME, INDEX_TYPE, "");
     }
@@ -196,7 +199,7 @@ public class ElasticSearchSinkTest {
         Map<String, Object> json = (Map<String, Object>) response.getHits().getAt(0).getSource().get("message");
         assertEquals("value", json.get("key"));
     }
-    
+
     @SuppressWarnings("unchecked")
     private void assertComplexJsonBody(Event event) {
         SearchResponse response = executeSearch(queryString("host:complexjsonbody"));
@@ -208,11 +211,11 @@ public class ElasticSearchSinkTest {
         assertEquals("subvalue", json.get("subkey"));
     }
 
-    private SearchResponse executeSearch(XContentQueryBuilder query) {
+    private SearchResponse executeSearch(QueryBuilder query) {
         return executeSearch(query, INDEX_NAME, INDEX_TYPE);
     }
 
-    private SearchResponse executeSearch(XContentQueryBuilder query, String indexName, String indexType) {
+    private SearchResponse executeSearch(QueryBuilder query, String indexName, String indexType) {
         return searchClient.prepareSearch(indexName).setTypes(indexType)
                 .setQuery(query)
                 .execute()
