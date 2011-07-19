@@ -40,9 +40,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.cloudera.flume</groupId>
-            <artifactId>flume</artifactId>
-            <version>0.9.3-cdh3u0</version>
+            <groupId>com.cloudera</groupId>
+            <artifactId>flume-core</artifactId>
+            <version>0.9.4-cdh3u1</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
