@@ -41,7 +41,7 @@ public class ElasticSearchSink extends EventSink.Base {
     private Node node;
     private Client client;
     private String indexName = DEFAULT_INDEX_NAME;
-
+    private String indexPattern = null;
     private String indexType = DEFAULT_LOG_TYPE;
 
     private Charset charset = Charset.defaultCharset();
@@ -57,8 +57,6 @@ public class ElasticSearchSink extends EventSink.Base {
 
     @Override
     public void append(Event e) throws IOException {
-        // TODO strategize the name of the index, so that logs based on day can go to individula indexes, allowing simple cleanup
-        // by deleting older days indexes in ES
         try {
             XContentBuilder builder = jsonBuilder()
                     .startObject()
@@ -70,10 +68,7 @@ public class ElasticSearchSink extends EventSink.Base {
 
             addAttrs(builder, e.getAttrs());
 
-            client.prepareIndex(indexName, indexType, null)
-                    .setSource(builder)
-                    .execute()
-                    .actionGet();
+            index(e, builder);
         } catch (Exception ex) {
             LOG.error("Error Processing event: {}", e.toString(), ex);
             eventErrorCount.incrementAndGet();
@@ -134,6 +129,21 @@ public class ElasticSearchSink extends EventSink.Base {
             if (parser != null) {
                 parser.close();
             }
+        }
+    }
+
+    private void index(Event e, XContentBuilder builder) {
+        String iName = indexName;
+        if (indexPattern != null) {
+            iName = e.escapeString(indexPattern);
+        }
+        client.prepareIndex(iName, indexType, null)
+                .setSource(builder)
+                .execute()
+                .actionGet();
+
+        if (!iName.equals(indexName)) {
+            client.admin().indices().prepareAliases().addAlias(iName, indexName).execute().actionGet();
         }
     }
 
@@ -200,6 +210,14 @@ public class ElasticSearchSink extends EventSink.Base {
 
     public void setIndexName(String indexName) {
         this.indexName = indexName;
+    }
+
+    public String getIndexPattern() {
+        return indexPattern;
+    }
+
+    public void setIndexPattern(String indexPattern) {
+        this.indexPattern = indexPattern;
     }
 
     public String getIndexType() {
